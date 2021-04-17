@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const auth = require("../middlewares/authMiddleware");
+const auth = require("../middlewares/AuthMiddleware");
 const controller = require("../Controllers/RoleController");
 
 router.get("/", auth.validateToken, auth.admin, controller.index);

@@ -4,8 +4,7 @@ const bcrypt = require("bcrypt");
 
 module.exports = {
   async index(req, res) {
-    console.log(req.route.path);
-    res.send({ token: utils.generateToken() });
+    res.send({});
   },
   async login(req, res) {
     const login = req.body;
@@ -70,4 +69,9 @@ module.exports = {
       }
     });
   },
+  async userByToken(req, res){
+    console.log(req.user)
+
+    utils.sendResponse(res, 200, req.user)
+  }
 };

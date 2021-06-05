@@ -8,22 +8,64 @@ module.exports = {
   async index(req, res) {
     db("public_gig")
       .where({ deleted_at: null })
-      .then((result) => {
-        utils.sendResponse(res, 200, result);
+      .then(async (gigs) => {
+        if (gigs) {
+          if (!gigs.length) gigs = [gigs];
+
+          gigs = await Promise.all(
+            gigs.map(async (result) => {
+              reviews = await db("gig_review").where({ gig_id: result.id });
+              let rating = 0;
+              let counter = 0;
+              reviews &&
+                reviews.forEach((review) => {
+                  rating += review.rating;
+                  counter++;
+                });
+
+              if (counter != 0) rating = rating / counter;
+
+              result.rating = parseInt(rating);
+
+              return result;
+            })
+          );
+        }
+        utils.sendResponse(res, 200, gigs);
       });
   },
   async get(req, res) {
     const gigID = req.params.gigID;
+
     db("public_gig")
       .where({ id: gigID })
       .first()
-      .then((result) => {
+      .then(async (result) => {
         if (result) {
-          utils.sendResponse(res, 200, result);
-          return;
-        }
+          result.owner = await db("public_user")
+            .where({ username: result.owner })
+            .first();
 
-        utils.sendError(res, 404, "Gig not found");
+          db("gig_review")
+            .where({ gig_id: result.id })
+            .then((reviews) => {
+              let rating = 0;
+              let counter = 0;
+              reviews &&
+                reviews.forEach((review) => {
+                  rating += review.rating;
+                  counter++;
+                });
+
+              if (counter != 0) rating = rating / counter;
+
+              result.rating = parseInt(rating);
+
+              utils.sendResponse(res, 200, result);
+            });
+        } else {
+          utils.sendError(res, 404, "Gig not found");
+        }
       });
   },
   async insert(req, res) {
@@ -127,6 +169,35 @@ module.exports = {
         }
         utils.sendError(res, 400, "Error deleting gig");
         return;
+      });
+  },
+  async userIndex(req, res) {
+    const userID = req.params.userID;
+    db("public_gig")
+      .where({ owner: userID })
+      .first()
+      .then(async (result) => {
+        if (result) {
+          if (!result.length) result = [result];
+
+          result = await Promise.all(
+            result.map(async (gig) => {
+              let user = await db("public_user")
+                .where({ username: gig.owner })
+                .first();
+
+              gig.owner = user;
+              return gig;
+            })
+          );
+
+          console.log(result);
+
+          utils.sendResponse(res, 200, result);
+          return;
+        }
+
+        utils.sendError(res, 404, "Gig not found");
       });
   },
 };
